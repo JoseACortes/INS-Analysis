@@ -23,15 +23,15 @@ MINS = insa.Analyzer()
 # the following three give the same result
 # areas is a list of numbers (int or float)
 
-areas = insa.Calc_Peak_areas(bins, vals)
+areas = insa.calcPeakAreas(bins, vals)
 
-areas, fits = insa.Calc_Peak_areas(bins, vals, return_fits=True)
+areas, fits = insa.calcPeakAreas(bins, vals, return_fits=True)
 ```
 
 This can also be called with the MINS object
 
 ```
-areas = MINS.Calc_Peak_areas(bins, vals)
+areas = MINS.calcPeakAreas(bins, vals)
 ```
 
 
@@ -45,12 +45,34 @@ calib_params = insa.calibrate(areas, true_concentrations)
 ```
 
 ```
-pred_concentrations = MINS.evaluate_areas(areas)
-pred_concentrations = insa.evaluate_areas(areas, calib_params)
+pred_concentrations = MINS.applyCalibrationAreas(areas)
+pred_concentrations = insa.applyCalibrationAreas(areas, calib_params)
 
-pred_concentrations = MINS.evaluate(bins, vals)
-pred_concentrations = insa.evaluate(bins, vals, calib_params)
+pred_concentrations = MINS.applyCalibration(bins, vals)
+pred_concentrations = insa.applyCalibration(bins, vals, calib_params)
 
-pred_concentrations = MINS.apply(filenames)
-pred_concentrations = insa.apply(filenames, calib_params)
+pred_concentrations = MINS.process(filenames)
+pred_concentrations = insa.process(filenames, calib_params)
+```
+
+
+# package structure
+
+```
+INS-Analysis/
+├── README.md
+├── setup.py
+├── requirements.txt
+├── LICENSE
+├── .gitignore
+├── Documenation/
+├── Examples/
+└── INS-Analysis/
+    ├── __init__.py
+    ├── apply.py
+    ├── Analyzer.py
+    ├── utils.py
+    ├── areas/
+    ├── Spectrum/
+    └── calibration/
 ```
