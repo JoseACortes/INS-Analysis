@@ -1,5 +1,8 @@
 import numpy as np
 
+def geb(x, a, b, c):
+    return a * np.exp(-b * x) + c
+
 def gaus(x,x0,a,sigma):
     return a*np.exp(-(x-x0)**2/(sigma**2))
 
@@ -42,6 +45,11 @@ def original_calibration(x, k1, k2):
     c = x[0]
     si = x[1]
     return (c-k1*si)/k2
+
+def proposed_calibration_a(x, k1, k2, k3):
+    c = x[0]
+    si = x[1]
+    return (c-k1*si)/k2+k3
 
 def generate_compound_sum(fitting_functions, weight_lens):
     """

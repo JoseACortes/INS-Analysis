@@ -48,11 +48,11 @@ calib_params = insa.calibrate(areas, true_concentrations)
 pred_concentrations = MINS.applyCalibrationAreas(areas)
 pred_concentrations = insa.applyCalibrationAreas(areas, calib_params)
 
-pred_concentrations = MINS.applyCalibration(bins, vals)
-pred_concentrations = insa.applyCalibration(bins, vals, calib_params)
+pred_concentrations = MINS.apply(bins, vals)
+pred_concentrations = insa.apply(bins, vals, calib_params)
 
-pred_concentrations = MINS.process(filenames)
-pred_concentrations = insa.process(filenames, calib_params)
+pred_concentrations = MINS.applyFromFile(filenames)
+pred_concentrations = insa.applyFromFile(filenames, calib_params)
 ```
 
 
