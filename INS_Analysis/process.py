@@ -1,7 +1,7 @@
-import Spectrum
+from . import Spectrum
 
-from calibration import applyCalibrationAreas
-from areas import calcPeakAreas
+from .areas import calcPeakAreas
+from .calibration import applyCalibrationAreas
 
 def apply(
         bins,

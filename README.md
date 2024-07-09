@@ -10,8 +10,7 @@ import INS-Analysis as insa
 ## Data Preperation
 ```
 bins, vals = [], []
-bins, vals = isna.Spectrum.readMCTAL(mctal_filepath)
-bins, vals = isna.Spectrum.readMCA(mca_filepath)
+bins, vals = isna.read(filepath)
 ```
 
 

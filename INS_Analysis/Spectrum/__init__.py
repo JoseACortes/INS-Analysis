@@ -1,5 +1,5 @@
-from readMCA import readMCA
-from readMCTAL import readMCTAL
+from .readMCA import readMCA
+from .readMCTAL import readMCTAL
 
 filereader = {'mca': readMCA, 'mctal': readMCTAL}
 

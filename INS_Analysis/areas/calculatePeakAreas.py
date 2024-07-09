@@ -11,8 +11,8 @@ defaultPeakWindows = {
 }
 
 baselineFunctions = {
-    'linear': {
-        'fn': ff.linear,
+    'point_slope': {
+        'fn': ff.point_slope,
         'bounds': {
             'lower': [None, None],
             'upper': [None, None],
@@ -31,7 +31,7 @@ baselineFunctions = {
 
 peakFunctions = {
     'gaus': {
-        'fn': ff.gauss,
+        'fn': ff.gaus,
         'bounds': {
             'lower': ['lower bound x', 0, 0],
             'upper': ['upper bound x', 'window height', 'upper bound sigma'],
@@ -45,13 +45,13 @@ default_peak_area_config = {
         'targets': [1.78],
         'window': defaultPeakWindows['Si1'],
         'peaks': [peakFunctions['gaus']],
-        'baseline': baselineFunctions['linear'],
+        'baseline': baselineFunctions['point_slope'],
     },
     'C1Si2': {
         'targets': [4.44, 4.5],
         'window': defaultPeakWindows['C1Si2'],
         'peaks': [peakFunctions['gaus'], peakFunctions['gaus']],
-        'baseline': baselineFunctions['linear'],
+        'baseline': baselineFunctions['point_slope'],
     },
     'geb': None,
 }
@@ -250,7 +250,7 @@ def calcPeakAreas(
         peakStartingWeights=None, # list of lists or dict
         peakUpperBounds=None, # list of lists or dict
         peakLowerBounds=None, # list of lists or dict
-        baselineFunction='linear', # str, list or dict
+        baselineFunction='point_slope', # str, list or dict
         baselineStartingWeights=None, # list of lists or dict
         baselineUpperBounds=None, # list of lists or dict
         baselineLowerBounds=None, # list of lists or dict
