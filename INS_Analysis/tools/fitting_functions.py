@@ -1,8 +1,8 @@
 import numpy as np
 
 def geb(x, a, b, c):
-    return a * np.exp(-b * x) + c
-
+    return (a+b*np.sqrt(x+c*(x*x)))*0.60056120439322
+    
 def gaus(x,x0,a,sigma):
     return a*np.exp(-(x-x0)**2/(sigma**2))
 

@@ -14,9 +14,9 @@ baselineFunctions = {
     'point_slope': {
         'fn': ff.point_slope,
         'bounds': {
-            'lower': [None, None],
-            'upper': [None, None],
-            'starting_weights': [None, None],
+            'lower': [-np.inf, -np.inf],
+            'upper': [np.inf, np.inf],
+            'starting_weights': [1, 1],
             }
         },
     'point_slope_super': {
@@ -35,7 +35,7 @@ peakFunctions = {
         'bounds': {
             'lower': ['lower bound x', 0, 0],
             'upper': ['upper bound x', 'window height', 'upper bound sigma'],
-            'starting_weights': [None, None, 'sigma']
+            'starting_weights': ['center x', 'window height', 'sigma']
             }
         }
 }
@@ -78,12 +78,12 @@ def wh(vals, **kwargs):
 
 def sgm(target, geb, **kwargs):
     if geb is None:
-        return None
+        return 1
     return geb_fn(target, geb['a'], geb['b'], geb['c'])
 
 def ubsgm(target, geb, **kwargs):
     if geb is None:
-        return None
+        return np.inf
     return geb_fn(target, geb['a'], geb['b'], geb['c']) * 2 
 atbds = {
     'lower bound x': lbx,
@@ -93,6 +93,7 @@ atbds = {
     'center x': cx,
     'window height': wh,
     'sigma': sgm,
+    'upper bound sigma': ubsgm,
 }
 
 
@@ -114,19 +115,39 @@ def theActualPeakAreaCalculation(bins, vals, config, returnFits=False, **kwargs)
     si1_wave_bins, si1_wave_vals = wm.make_window(wave, si1_config['window'][0], si1_config['window'][1])
     si1_peak_config = si1_config['peaks']
     si1_baseline_config = si1_config['baseline']
-    target = si1_config['targets'][0]
+    
+    
+    targets = si1_config['targets']
 
-    si1_baseline_lower_bounds = autobound(bounds=si1_baseline_config['bounds']['lower'],bins=si1_wave_bins,vals=si1_wave_vals,target=target,geb=geb)
-    si1_baseline_upper_bounds = autobound(bounds=si1_baseline_config['bounds']['upper'],bins=si1_wave_bins,vals=si1_wave_vals,target=target,geb=geb)
-    si1_baseline_starting_weights = autobound(bounds=si1_baseline_config['starting_weights'],bins=si1_wave_bins,vals=si1_wave_vals,target=target,geb=geb)
+    si1_baseline_lower_bounds = autobound(bounds=si1_baseline_config['bounds']['lower'],bins=si1_wave_bins,vals=si1_wave_vals,target=targets[0],geb=geb)
+    si1_baseline_upper_bounds = autobound(bounds=si1_baseline_config['bounds']['upper'],bins=si1_wave_bins,vals=si1_wave_vals,target=targets[0],geb=geb)
+    si1_baseline_starting_weights = autobound(bounds=si1_baseline_config['bounds']['starting_weights'],bins=si1_wave_bins,vals=si1_wave_vals,target=targets[0],geb=geb)
     si1_baseline_function = si1_baseline_config['fn']
     si1_baseline_n_weights = len(si1_baseline_upper_bounds)
 
-    si1_peak_lower_bounds = autobound(bounds=si1_peak_config['bounds']['lower'],bins=si1_wave_bins,vals=si1_wave_vals,target=target,geb=geb)
-    si1_peak_upper_bounds = autobound(bounds=si1_peak_config['bounds']['upper'],bins=si1_wave_bins,vals=si1_wave_vals,target=target,geb=geb)
-    si1_peak_starting_weights = autobound(bounds=si1_peak_config['starting_weights'],bins=si1_wave_bins,vals=si1_wave_vals,target=target,geb=geb)
-    si1_peak_function = si1_peak_config['fn']
-    si1_peak_n_weights = len(si1_peak_upper_bounds)
+
+    si1_peak_upper_bounds = []
+    si1_peak_lower_bounds = []
+    si1_peak_starting_weights = []
+    si1_peak_functions = []
+    si1_peak_n_weights = []
+
+    for _, peak in enumerate(si1_peak_config):
+        peak_lower_bounds = autobound(bounds=peak['bounds']['lower'],bins=si1_wave_bins,vals=si1_wave_vals,target=targets[_],geb=geb)
+        peak_upper_bounds = autobound(bounds=peak['bounds']['upper'],bins=si1_wave_bins,vals=si1_wave_vals,target=targets[_],geb=geb)
+        peak_starting_weights = autobound(bounds=peak['bounds']['starting_weights'],bins=si1_wave_bins,vals=si1_wave_vals,target=targets[_],geb=geb)
+        peak_function = peak['fn']
+        peak_n_weights = len(peak_upper_bounds)
+
+        si1_peak_upper_bounds += peak_upper_bounds
+        si1_peak_lower_bounds += peak_lower_bounds
+        si1_peak_starting_weights += peak_starting_weights
+        si1_peak_functions.append(peak_function)
+        si1_peak_n_weights.append(peak_n_weights)
+
+    
+    si1_peak_function = ff.generate_compound_sum(si1_peak_functions, si1_peak_n_weights)
+    si1_peak_n_weights = sum(si1_peak_n_weights)
 
     si1_sum_function = ff.generate_compound_sum([si1_baseline_function, si1_peak_function], [si1_baseline_n_weights, si1_peak_n_weights])
     si1_sum_lower_bounds = si1_baseline_lower_bounds + si1_peak_lower_bounds
@@ -138,7 +159,7 @@ def theActualPeakAreaCalculation(bins, vals, config, returnFits=False, **kwargs)
         si1_wave_bins,
         si1_wave_vals,
         p0=si_starting_weights,
-        maxfev=500000,
+        maxfev=50000,
         bounds=(
             si1_sum_lower_bounds,
             si1_sum_upper_bounds
@@ -152,27 +173,45 @@ def theActualPeakAreaCalculation(bins, vals, config, returnFits=False, **kwargs)
         si1_peak_function,
         si1_wave_bins[0],
         si1_wave_bins[-1],
-        args=si1_peak_final_weights
+        args=tuple(si1_peak_final_weights.tolist())
     )[0]
 
     # c1si2
+
     c1si2_config = config['C1Si2']
     c1si2_wave_bins, c1si2_wave_vals = wm.make_window(wave, c1si2_config['window'][0], c1si2_config['window'][1])
     c1si2_peak_config = c1si2_config['peaks']
     c1si2_baseline_config = c1si2_config['baseline']
     targets = c1si2_config['targets']
 
-    c1si2_baseline_lower_bounds = autobound(bounds=c1si2_baseline_config['bounds']['lower'],bins=c1si2_wave_bins,vals=c1si2_wave_vals,target=targets,geb=geb)
-    c1si2_baseline_upper_bounds = autobound(bounds=c1si2_baseline_config['bounds']['upper'],bins=c1si2_wave_bins,vals=c1si2_wave_vals,target=targets,geb=geb)
-    c1si2_baseline_starting_weights = autobound(bounds=c1si2_baseline_config['starting_weights'],bins=c1si2_wave_bins,vals=c1si2_wave_vals,target=targets,geb=geb)
+    c1si2_baseline_lower_bounds = autobound(bounds=c1si2_baseline_config['bounds']['lower'],bins=c1si2_wave_bins,vals=c1si2_wave_vals,target=targets[0],geb=geb)
+    c1si2_baseline_upper_bounds = autobound(bounds=c1si2_baseline_config['bounds']['upper'],bins=c1si2_wave_bins,vals=c1si2_wave_vals,target=targets[0],geb=geb)
+    c1si2_baseline_starting_weights = autobound(bounds=c1si2_baseline_config['bounds']['starting_weights'],bins=c1si2_wave_bins,vals=c1si2_wave_vals,target=targets[0],geb=geb)
     c1si2_baseline_function = c1si2_baseline_config['fn']
     c1si2_baseline_n_weights = len(c1si2_baseline_upper_bounds)
 
-    c1si2_peak_lower_bounds = autobound(bounds=c1si2_peak_config['bounds']['lower'],bins=c1si2_wave_bins,vals=c1si2_wave_vals,target=targets,geb=geb)
-    c1si2_peak_upper_bounds = autobound(bounds=c1si2_peak_config['bounds']['upper'],bins=c1si2_wave_bins,vals=c1si2_wave_vals,target=targets,geb=geb)
-    c1si2_peak_starting_weights = autobound(bounds=c1si2_peak_config['starting_weights'],bins=c1si2_wave_bins,vals=c1si2_wave_vals,target=targets,geb=geb)
-    c1si2_peak_function = c1si2_peak_config['fn']
-    c1si2_peak_n_weights = len(c1si2_peak_upper_bounds)
+    c1si2_peak_upper_bounds = []
+    c1si2_peak_lower_bounds = []
+    c1si2_peak_starting_weights = []
+    c1si2_peak_functions = []
+    c1si2_peak_n_weights = []
+
+    for _, peak in enumerate(c1si2_peak_config):
+
+        peak_lower_bounds = autobound(bounds=peak['bounds']['lower'],bins=c1si2_wave_bins,vals=c1si2_wave_vals,target=targets[_],geb=geb)
+        peak_upper_bounds = autobound(bounds=peak['bounds']['upper'],bins=c1si2_wave_bins,vals=c1si2_wave_vals,target=targets[_],geb=geb)
+        peak_starting_weights = autobound(bounds=peak['bounds']['starting_weights'],bins=c1si2_wave_bins,vals=c1si2_wave_vals,target=targets[_],geb=geb)
+        peak_function = peak['fn']
+        peak_n_weights = len(peak_upper_bounds)
+
+        c1si2_peak_upper_bounds += peak_upper_bounds
+        c1si2_peak_lower_bounds += peak_lower_bounds
+        c1si2_peak_starting_weights += peak_starting_weights
+        c1si2_peak_functions.append(peak_function)
+        c1si2_peak_n_weights.append(peak_n_weights)
+
+    c1si2_peak_function = ff.generate_compound_sum(c1si2_peak_functions, c1si2_peak_n_weights)
+    c1si2_peak_n_weights = sum(c1si2_peak_n_weights)
 
     c1si2_sum_function = ff.generate_compound_sum([c1si2_baseline_function, c1si2_peak_function], [c1si2_baseline_n_weights, c1si2_peak_n_weights])
     c1si2_sum_lower_bounds = c1si2_baseline_lower_bounds + c1si2_peak_lower_bounds
@@ -184,7 +223,7 @@ def theActualPeakAreaCalculation(bins, vals, config, returnFits=False, **kwargs)
         c1si2_wave_bins,
         c1si2_wave_vals,
         p0=c1si2_starting_weights,
-        maxfev=500000,
+        maxfev=50000,
         bounds=(
             c1si2_sum_lower_bounds,
             c1si2_sum_upper_bounds
@@ -200,7 +239,7 @@ def theActualPeakAreaCalculation(bins, vals, config, returnFits=False, **kwargs)
             c1si2_peak_function,
             c1si2_wave_bins[0],
             c1si2_wave_bins[-1],
-            args=c1si2_peak_final_weights
+            args=tuple(c1si2_peak_final_weights.tolist())
         )[0])
     
     c1si2_peak_area = sum(c1si2_peak_areas)
@@ -242,11 +281,24 @@ def theActualPeakAreaCalculation(bins, vals, config, returnFits=False, **kwargs)
 
 windowlabellist = ['Si1', 'C1Si2']
 
+common_fns = {
+    'point_slope': ff.point_slope,
+    'point_slope_super': ff.point_slope_super,
+    'exp_falloff': ff.exp_falloff,
+    'fat_tail': ff.fat_tail,
+    'chi_2': ff.chi_2,
+    'char': ff.char,
+    'x': ff.x,
+    'const': ff.const,
+    'gaus': ff.gaus,
+}
+
+
 def calcPeakAreas(
         bins, 
         vals, 
         peakWindows=defaultPeakWindows, # list or dict
-        peakFunctions='gauss', # str, list or dict
+        peakFunctions='gaus', # str, list or dict
         peakStartingWeights=None, # list of lists or dict
         peakUpperBounds=None, # list of lists or dict
         peakLowerBounds=None, # list of lists or dict
@@ -258,19 +310,27 @@ def calcPeakAreas(
         returnFits:bool=False,
         **kwargs
         ): #a wrapper for theActualPeakAreaCalculation
-    
     if isinstance(peakWindows, list):
         peakWindows = dict(zip(windowlabellist, peakWindows))
+
     if isinstance(peakFunctions, str):
+        peakFunctions = [[peakFunctions], [peakFunctions, peakFunctions]]
+    if isinstance(peakFunctions, list):
         peakFunctions = dict(zip(windowlabellist, peakFunctions))
+
     if isinstance(peakStartingWeights, list):
         peakStartingWeights = dict(zip(windowlabellist, peakStartingWeights))
     if isinstance(peakUpperBounds, list):
         peakUpperBounds = dict(zip(windowlabellist, peakUpperBounds))
     if isinstance(peakLowerBounds, list):
         peakLowerBounds = dict(zip(windowlabellist, peakLowerBounds))
+
+
     if isinstance(baselineFunction, str):
-        baselineFunction = dict(zip(windowlabellist, [baselineFunction]*len(windowlabellist)))
+        baselineFunction = [baselineFunction]*len(windowlabellist)
+    if isinstance(baselineFunction, list):
+        baselineFunction = dict(zip(windowlabellist, baselineFunction))
+
     if isinstance(baselineStartingWeights, list):
         baselineStartingWeights = dict(zip(windowlabellist, baselineStartingWeights))
     if isinstance(baselineUpperBounds, list):
@@ -285,10 +345,15 @@ def calcPeakAreas(
     if peakWindows is not None:
         for key in peakWindows:
             config[key]['window'] = peakWindows[key]
+
     if peakFunctions is not None:
         for key in peakFunctions:
             for i in range(len(config[key]['peaks'])):
-                config[key]['peaks'][i]['fn'] = peakFunctions[key]
+                if isinstance(peakFunctions[key][i], str):
+                    config[key]['peaks'][i]['fn'] = common_fns[peakFunctions[key][i]]
+                else:
+                    config[key]['peaks'][i]['fn'] = peakFunctions[key][i]
+
     if peakStartingWeights is not None:
         for key in peakStartingWeights:
             for i in range(len(config[key]['peaks'])):
@@ -301,10 +366,14 @@ def calcPeakAreas(
         for key in peakLowerBounds:
             for i in range(len(config[key]['peaks'])):
                 config[key]['peaks'][i]['bounds']['lower'] = peakLowerBounds[key]
+
     if baselineFunction is not None:
         for key in baselineFunction:
-            for i in range(len(config[key]['peaks'])):
+            if isinstance(baselineFunction[key], str):
+                config[key]['baseline']['fn'] = common_fns[baselineFunction[key]]
+            else:
                 config[key]['baseline']['fn'] = baselineFunction[key]
+
     if baselineStartingWeights is not None:
         for key in baselineStartingWeights:
             for i in range(len(config[key]['peaks'])):
@@ -318,7 +387,6 @@ def calcPeakAreas(
             for i in range(len(config[key]['peaks'])):
                 config[key]['baseline']['bounds']['lower'] = baselineLowerBounds[key]
     if geb is not None:
-        for key in geb:
-            config[key]['geb'] = geb[key]
+        config['geb'] = geb
 
     return theActualPeakAreaCalculation(bins, vals, config, returnFits=returnFits, **kwargs)

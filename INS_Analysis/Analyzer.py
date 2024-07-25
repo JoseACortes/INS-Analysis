@@ -56,9 +56,28 @@ class Analyzer():
             res[label] = calcPeakAreas(bins, vals, **kwargs)
         return res
     
-    def calibrate(self, areas, **kwargs):
-        self.calibration = calibrate(areas, **kwargs)
-        return self.calibration
+    def calibrate(
+        self, 
+        labels: list,
+        Si1_method: str = 'original', 
+        Si1_p0=None,
+        Si2C1_method: str = 'original',
+        Si2C1_p0=None,
+        **kwargs):
+        true_concentrations = {}
+        for label in labels:
+            true_concentrations[label] = self.spectrums[label]['true_comp']
+        true_concentrations = list(true_concentrations.values())
+        areas = self.calcPeakAreas(labels, **kwargs)
+        return self.calibrate(
+            areas=areas, 
+            true_concentrations=true_concentrations,
+            Si1_method=Si1_method,
+            Si1_p0=Si1_p0,
+            Si2C1_method=Si2C1_method,
+            Si2C1_p0=Si2C1_p0,
+            **kwargs
+            )
     
     def applyCalibrationAreas(self, areas, **kwargs):
         return applyCalibrationAreas(areas=areas, calib_params = self.calibration, **kwargs)
