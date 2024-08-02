@@ -25,7 +25,8 @@ def exp_falloff(x,x0,a,p,b):
     return (a*np.exp(-p*(x-x0)))+b
 
 def fat_tail(x,x0,a,p,b):
-    return (a/(x-x0)**p)+b
+    ret = (a/(x-x0)**p)+b
+    return ret
 
 from scipy.stats import chi2
 
@@ -41,15 +42,20 @@ def x(x, x0):
 def const(x, x0):
     return x0
 
+def k1(x, k1):
+    return np.multiply(x, k1)
+
 def original_calibration(x, k1, k2):
-    c = x[0]
-    si = x[1]
-    return (c-k1*si)/k2
+    def f(x):
+        return (x[1]-k1*x[0])/k2
+    ret = np.apply_along_axis(f, -1, x)
+    return ret
 
 def proposed_calibration_a(x, k1, k2, k3):
-    c = x[0]
-    si = x[1]
-    return (c-k1*si)/k2+k3
+    def f(x):
+        return (x[1]-k1*x[0])/k2+k3
+    ret = np.apply_along_axis(f, -1, x)
+    return ret
 
 def generate_compound_sum(fitting_functions, weight_lens):
     """
