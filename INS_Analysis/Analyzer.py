@@ -44,6 +44,7 @@ class Analyzer():
                 'Si2C1': None,
             },
             'for_calib': False,
+            'area_calc_failed': False,
         }
 
     def addSpectrums(self, specs, labels, **kwargs):
@@ -54,27 +55,43 @@ class Analyzer():
         import pandas as pd
         df = pd.DataFrame(self.spectrums).T
         return df.reset_index().rename(columns={'index':'label'})
+    
+    def calcPeakArea(self, label, returnFits=False, **kwargs):
+        self.spectrums[label]['area_calc_failed'] = False
+        bins = self.spectrums[label]['bins']
+        vals = self.spectrums[label]['vals']
+        try:
+            res = calcPeakAreas(bins, vals, returnFits=returnFits, **kwargs)
+        except:
+            self.spectrums[label]['area_calc_failed'] = True
+            return None
+        areas = res
+        fits = None
+        if returnFits:
+            areas, fits = areas
+        self.spectrums[label]['areas']['Si1'] = areas['Si1']
+        self.spectrums[label]['areas']['Si2C1'] = areas['Si2C1']
+        if returnFits:
+            self.spectrums[label]['fits']['Si1']['bins'] = fits['Si1']['bins']
+            self.spectrums[label]['fits']['Si1']['baseline'] = fits['Si1']['baseline']
+            self.spectrums[label]['fits']['Si1']['peak'] = fits['Si1']['peak']
+            self.spectrums[label]['fits']['Si2C1']['bins'] = fits['Si2C1']['bins']
+            self.spectrums[label]['fits']['Si2C1']['baseline'] = fits['Si2C1']['baseline']
+            self.spectrums[label]['fits']['Si2C1']['peak'] = fits['Si2C1']['peak']
+        return res
 
     def calcPeakAreas(self, labels, returnFits=False, **kwargs):
-        res = {}
         for label in labels:
-            bins = self.spectrums[label]['bins']
-            vals = self.spectrums[label]['vals']
-            res[label] = calcPeakAreas(bins, vals, returnFits=returnFits, **kwargs)
-            areas = res[label]
-            fits = None
-            if returnFits:
-                areas, fits = areas
-            self.spectrums[label]['areas']['Si1'] = areas['Si1']
-            self.spectrums[label]['areas']['Si2C1'] = areas['Si2C1']
-            if returnFits:
-                self.spectrums[label]['fits']['Si1']['bins'] = fits['Si1']['bins']
-                self.spectrums[label]['fits']['Si1']['baseline'] = fits['Si1']['baseline']
-                self.spectrums[label]['fits']['Si1']['peak'] = fits['Si1']['peak']
-                self.spectrums[label]['fits']['Si2C1']['bins'] = fits['Si2C1']['bins']
-                self.spectrums[label]['fits']['Si2C1']['baseline'] = fits['Si2C1']['baseline']
-                self.spectrums[label]['fits']['Si2C1']['peak'] = fits['Si2C1']['peak']
-        return res
+            self.calcPeakArea(label, returnFits=returnFits, **kwargs)
+        ret = {}
+        for label in labels:
+            ret[label] = self.spectrums[label]['areas']
+        if returnFits:
+            ret_fits = {}
+            for label in labels:
+                ret_fits[label] = self.spectrums[label]['fits']
+            return ret, ret_fits
+        return ret
     
     def calibrate(
             self, 
@@ -117,7 +134,10 @@ class Analyzer():
             self.spectrums[label]['for_calib'] = True
         return res
     
-    def applyCalibrationAreas(self, labels, **kwargs):
+    def applyCalibrationAreas(self, labels=None, **kwargs):
+        if labels is None:
+            labels = list(self.spectrums.keys())
+            labels = [label for label in labels if not self.spectrums[label]['area_calc_failed']] # removes failed area calculations
         areas = []
         for label in labels:
             a = self.spectrums[label]['areas']

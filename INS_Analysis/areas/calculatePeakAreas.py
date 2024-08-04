@@ -131,7 +131,7 @@ def autobound(bounds, bins, vals, target, geb):
 #           baseline:{baseline_config},
 #                   },
 #   'element 2': {},
-#   'geb': {'a': -0.0073, 'b': 0.0078, 'c': 0},
+#   'geb': {'a': -0.0073, 'b': 0.078, 'c': 0},
 #   'maxfev': 50000,
 #   }
 
@@ -290,14 +290,14 @@ def theActualPeakAreaCalculation(bins, vals, config, returnFits=False, **kwargs)
 
     fits = {
         'Si1': {
-            'bins': bins,
-            'baseline': si1_baseline_function(np.array(bins), *si1_baseline_final_weights).tolist(),
-            'peak': si1_sum_function(np.array(bins), *si1_final_weights).tolist(),
+            'bins': si1_wave_bins,
+            'baseline': si1_baseline_function(np.array(si1_wave_bins), *si1_baseline_final_weights).tolist(),
+            'peak': si1_sum_function(np.array(si1_wave_bins), *si1_final_weights).tolist(),
         }, 
         'Si2C1': {
-            'bins': bins,
-            'baseline': si2C1_baseline_function(np.array(bins), *si2C1_baseline_final_weights).tolist(),
-            'peak': si2C1_sum_function(np.array(bins), *si2C1_final_weights).tolist(),
+            'bins': si2C1_wave_bins,
+            'baseline': si2C1_baseline_function(np.array(si2C1_wave_bins), *si2C1_baseline_final_weights).tolist(),
+            'peak': si2C1_sum_function(np.array(si2C1_wave_bins), *si2C1_final_weights).tolist(),
         }
         }
     
@@ -370,7 +370,7 @@ def calcPeakAreas(
     if isinstance(baselineLowerBounds, list):
         baselineLowerBounds = dict(zip(windowlabellist, baselineLowerBounds))
     if isinstance(geb, list):
-        geb = dict(zip(windowlabellist, geb))
+        geb = {'a': geb[0], 'b': geb[1], 'c': geb[2]}
 
     config = default_peak_area_config
 
